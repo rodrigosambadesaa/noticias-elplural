@@ -199,10 +199,12 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         boolean isFast = ConnectivityAndInternetAccess.isConnectedFast(this);
         boolean isCaptive = ConnectivityAndInternetAccess.isCaptivePortalDetected(this);
         boolean isValidated = ConnectivityAndInternetAccess.isInternetValidated(this);
+        boolean isStalled = ConnectivityAndInternetAccess.isConnectionAttemptStalled(this);
 
         Log.d(TAG, "Chequeo de red: ConnectedOrConnecting=" + isConnectedOrConnecting +
                 ", Connected=" + isConnected + ", Wifi=" + isWifi + ", Mobile=" + isMobile +
-                ", VPN=" + isVpn + ", Airplane=" + isAirplane + ", Fast=" + isFast);
+                ", VPN=" + isVpn + ", Airplane=" + isAirplane + ", Fast=" + isFast +
+                ", Stalled=" + isStalled);
 
         if (!isConnectedOrConnecting && !isConnected) {
             // Disconnected / Offline
@@ -280,7 +282,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
             @Override
             public void onResult(ConnectivityAndInternetAccess.InternetResult result) {
                 if (result != null && result.isReachable()) {
-                    Log.d(TAG, "Conexión a internet verificada mediante sondeador DNS/HTTP (" + result.getElapsedMilliseconds() + "ms). Iniciando descarga RSS...");
+                    Log.d(TAG, "Conexión verificada mediante diagnóstico multicapa DNS/TCP/NTP/HTTP/TLS (" + result.getElapsedMilliseconds() + "ms). Iniciando descarga RSS...");
                     new DescargaNoticiasRSS(MainActivity.this, MainActivity.this).execute(RSS_URL, NoticiaRSS.RSS_MUY_INTERESANTE);
                 } else {
                     swipeRefreshLayout.setRefreshing(false);
@@ -409,7 +411,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
     private void ejecutarDiagnosticoRedCompleto() {
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Diagnóstico de Conectividad")
-                .setMessage("Ejecutando comprobación avanzada de red y sondeo activo DNS/HTTP...")
+                .setMessage("Ejecutando comprobación avanzada de red y diagnóstico DNS/TCP/NTP/HTTP/TLS...")
                 .setPositiveButton("Cerrar", null)
                 .show();
 
@@ -439,7 +441,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
                     sb.append("• Red VPN Activa: ").append(isVpn ? "SÍ" : "No").append("\n");
                     sb.append("• Modo Avión: ").append(isAirplane ? "ACTIVADO" : "Desactivado").append("\n\n");
 
-                    sb.append("🔍 PRUEBA ACTIVA DNS/HTTP (GIST):\n");
+                    sb.append("🔍 DIAGNÓSTICO ACTIVO MULTICAPA (GIST):\n");
                     sb.append("• Internet Real: ").append(reachable ? "SÍ (Internet Verificado)" : "NO (Sin Internet)").append("\n");
                     sb.append("• Servidor alcanzado: ").append(reachedHost).append("\n");
                     sb.append("• Latencia de respuesta: ").append(time).append(" ms\n");
