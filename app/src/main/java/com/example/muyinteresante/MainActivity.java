@@ -23,6 +23,7 @@ import android.widget.Toast;
 
 import com.example.muyinteresante.util.ConnectivityAndInternetAccess;
 import com.example.muyinteresante.util.NewsCacheManager;
+import com.example.muyinteresante.util.RemoteOperationPolicy;
 import com.example.muyinteresanteNoTocar.DescargaNoticiasRSS;
 import com.example.muyinteresanteNoTocar.NoticiaRSS;
 import com.example.muyinteresanteNoTocar.iNoticiaRSS;
@@ -268,30 +269,100 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
     }
 
     private void ejecutarDescargarNoticias() {
-        // Comprobación rápida inicial de estado de red antes del sondeador activo
-        if (!ConnectivityAndInternetAccess.isConnectedOrConnecting(this)) {
-            Toast.makeText(this, "Sin conexión disponible para iniciar la descarga.", Toast.LENGTH_SHORT).show();
+        // Guard barato: la petición RSS real es la prueba definitiva del feed.
+        if (!RemoteOperationPolicy.canStartRequest(
+                ConnectivityAndInternetAccess.isConnected(this))) {
+            Log.d(TAG, "Carga RSS omitida: no hay una red utilizable.");
             usarNoticiasOffline();
             return;
         }
 
         swipeRefreshLayout.setRefreshing(true);
-
-        // Sondeo activo DNS-first / HTTP probe del Gist
-        ConnectivityAndInternetAccess.checkInternetAsyncDefault(this, new ConnectivityAndInternetAccess.InternetCallback() {
+        new DescargaNoticiasRSS(
+                MainActivity.this,
+                new DescargaNoticiasRSS.RemoteResultListener() {
             @Override
-            public void onResult(ConnectivityAndInternetAccess.InternetResult result) {
-                if (result != null && result.isReachable()) {
-                    Log.d(TAG, "Conexión verificada mediante diagnóstico multicapa DNS/TCP/NTP/HTTP/TLS (" + result.getElapsedMilliseconds() + "ms). Iniciando descarga RSS...");
-                    new DescargaNoticiasRSS(MainActivity.this, MainActivity.this).execute(RSS_URL, NoticiaRSS.RSS_MUY_INTERESANTE);
-                } else {
-                    swipeRefreshLayout.setRefreshing(false);
-                    Log.w(TAG, "Chequeo activo de internet falló");
-                    Toast.makeText(MainActivity.this, "Sin acceso a internet para descargar noticias.", Toast.LENGTH_SHORT).show();
-                    usarNoticiasOffline();
-                }
+            public void onRemoteResult(DescargaNoticiasRSS.RemoteResult result) {
+                manejarResultadoCargaInicial(result);
+            }
+        }, true).execute(RSS_URL, NoticiaRSS.RSS_MUY_INTERESANTE);
+    }
+
+    private void manejarResultadoCargaInicial(DescargaNoticiasRSS.RemoteResult result) {
+        swipeRefreshLayout.setRefreshing(false);
+        ArrayList<NoticiaRSS> noticias = result != null ? result.getNoticias() : null;
+        if (noticias != null && !noticias.isEmpty()) {
+            aplicarNoticiasIniciales(noticias);
+            return;
+        }
+
+        diagnosticarFalloRSS("la carga de noticias", result, new Runnable() {
+            @Override
+            public void run() {
+                usarNoticiasOffline();
             }
         });
+    }
+
+    private void aplicarNoticiasIniciales(ArrayList<NoticiaRSS> listaNoticias) {
+        adapter.updateData(listaNoticias);
+        NewsCacheManager.saveNewsToCache(this, listaNoticias);
+        layoutEmptyState.setVisibility(View.GONE);
+        rvNoticias.setVisibility(View.VISIBLE);
+        nextArchivePage = 2;
+        hasMoreNews = true;
+        isLoadingMore = false;
+        consecutiveDuplicatePages = 0;
+        Log.d(TAG, "Noticias recibidas con éxito: " + listaNoticias.size());
+    }
+
+    private void diagnosticarFalloRSS(
+            final String operation,
+            final DescargaNoticiasRSS.RemoteResult result,
+            final Runnable afterClassification) {
+        final Integer httpStatus = result != null ? result.getHttpStatus() : null;
+        final Throwable failure = result != null ? result.getFailure() : null;
+
+        // Un código HTTP ya demuestra comunicación con el servidor: no sondeamos
+        // Internet de forma redundante después de una respuesta válida.
+        if (!RemoteOperationPolicy.isAmbiguousConnectivityFailure(failure)
+                || RemoteOperationPolicy.hasHttpResponse(httpStatus)) {
+            Log.w(TAG, "Fallo de " + operation + " con respuesta/errores no ambiguos. HTTP=" + httpStatus, failure);
+            Toast.makeText(this, "El servicio de noticias no está disponible ahora.", Toast.LENGTH_SHORT).show();
+            if (afterClassification != null) {
+                afterClassification.run();
+            }
+            return;
+        }
+
+        Log.w(TAG, "Fallo ambiguo de " + operation + "; ejecutando diagnóstico general posterior.", failure);
+        ConnectivityAndInternetAccess.checkInternetAsyncDefault(
+                this,
+                new ConnectivityAndInternetAccess.InternetCallback() {
+                    @Override
+                    public void onResult(ConnectivityAndInternetAccess.InternetResult internetResult) {
+                        boolean generalInternetWorks =
+                                internetResult != null && internetResult.isReachable();
+                        RemoteOperationPolicy.FailureDisposition disposition =
+                                RemoteOperationPolicy.classifyFailure(
+                                        httpStatus, failure, generalInternetWorks);
+
+                        if (disposition == RemoteOperationPolicy.FailureDisposition.SERVICE_UNAVAILABLE) {
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Internet funciona, pero el servicio de noticias no está disponible.",
+                                    Toast.LENGTH_LONG).show();
+                        } else {
+                            Toast.makeText(
+                                    MainActivity.this,
+                                    "Problema de conectividad. Mostrando noticias guardadas.",
+                                    Toast.LENGTH_LONG).show();
+                        }
+                        if (afterClassification != null) {
+                            afterClassification.run();
+                        }
+                    }
+                });
     }
 
     /**
@@ -303,8 +374,10 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
             return;
         }
 
-        if (!ConnectivityAndInternetAccess.isConnectedOrConnecting(this)) {
+        if (!RemoteOperationPolicy.canStartRequest(
+                ConnectivityAndInternetAccess.isConnected(this))) {
             Log.d(TAG, "No se cargan más noticias: sin conexión disponible.");
+            Toast.makeText(this, "Sin conexión: se mantienen las noticias guardadas.", Toast.LENGTH_SHORT).show();
             return;
         }
 
@@ -312,62 +385,51 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         final int pageToLoad = nextArchivePage;
         Log.d(TAG, "Solicitando noticias antiguas. Página RSS: " + pageToLoad);
 
-        ConnectivityAndInternetAccess.checkInternetAsyncDefault(this, new ConnectivityAndInternetAccess.InternetCallback() {
+        new DescargaNoticiasRSS(
+                MainActivity.this,
+                new DescargaNoticiasRSS.RemoteResultListener() {
             @Override
-            public void onResult(ConnectivityAndInternetAccess.InternetResult result) {
-                if (result == null || !result.isReachable()) {
-                    isLoadingMore = false;
-                    Log.w(TAG, "No se pudo verificar internet para cargar la página " + pageToLoad);
+            public void onRemoteResult(DescargaNoticiasRSS.RemoteResult result) {
+                isLoadingMore = false;
+                ArrayList<NoticiaRSS> listaNoticias =
+                        result != null ? result.getNoticias() : null;
+                if (listaNoticias == null) {
+                    diagnosticarFalloRSS("la página " + pageToLoad, result, null);
                     return;
                 }
 
-                new DescargaNoticiasRSS(MainActivity.this, new iNoticiaRSS() {
-                    @Override
-                    public void onRecibeNoticiasRSS(ArrayList<NoticiaRSS> listaNoticias) {
-                        isLoadingMore = false;
+                if (listaNoticias.isEmpty()) {
+                    hasMoreNews = false;
+                    Log.d(TAG, "Fin del archivo RSS alcanzado en la página " + pageToLoad);
+                    Toast.makeText(MainActivity.this, "No hay más noticias antiguas disponibles", Toast.LENGTH_SHORT).show();
+                    return;
+                }
 
-                        if (listaNoticias == null) {
-                            // Error transitorio: no avanzamos de página para poder reintentarlo.
-                            Log.w(TAG, "Error descargando la página RSS " + pageToLoad + ". Se reintentará al volver al final.");
-                            return;
-                        }
+                int added = adapter.appendData(listaNoticias);
+                nextArchivePage = pageToLoad + 1;
 
-                        if (listaNoticias.isEmpty()) {
-                            hasMoreNews = false;
-                            Log.d(TAG, "Fin del archivo RSS alcanzado en la página " + pageToLoad);
-                            Toast.makeText(MainActivity.this, "No hay más noticias antiguas disponibles", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
+                if (added > 0) {
+                    consecutiveDuplicatePages = 0;
+                    NewsCacheManager.saveNewsToCache(MainActivity.this, adapter.getAllData());
+                    Log.d(TAG, "Página " + pageToLoad + " cargada: " + added + " noticias nuevas (" + listaNoticias.size() + " recibidas).");
+                } else {
+                    consecutiveDuplicatePages++;
+                    Log.d(TAG, "Página " + pageToLoad + " sin noticias nuevas tras deduplicar.");
 
-                        int added = adapter.appendData(listaNoticias);
-                        nextArchivePage = pageToLoad + 1;
-
-                        if (added > 0) {
-                            consecutiveDuplicatePages = 0;
-                            NewsCacheManager.saveNewsToCache(MainActivity.this, adapter.getAllData());
-                            Log.d(TAG, "Página " + pageToLoad + " cargada: " + added + " noticias nuevas (" + listaNoticias.size() + " recibidas).");
-                        } else {
-                            consecutiveDuplicatePages++;
-                            Log.d(TAG, "Página " + pageToLoad + " sin noticias nuevas tras deduplicar.");
-
-                            // Algunos feeds pueden repetir una página al cambiar su contenido.
-                            // Saltamos como máximo un pequeño número de páginas para evitar un bucle infinito.
-                            if (consecutiveDuplicatePages >= MAX_CONSECUTIVE_DUPLICATE_PAGES) {
-                                hasMoreNews = false;
-                                Log.w(TAG, "Se detiene la paginación tras varias páginas consecutivas duplicadas.");
-                            } else {
-                                rvNoticias.post(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        cargarMasNoticias();
-                                    }
-                                });
+                    if (consecutiveDuplicatePages >= MAX_CONSECUTIVE_DUPLICATE_PAGES) {
+                        hasMoreNews = false;
+                        Log.w(TAG, "Se detiene la paginación tras varias páginas consecutivas duplicadas.");
+                    } else {
+                        rvNoticias.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                cargarMasNoticias();
                             }
-                        }
+                        });
                     }
-                }, false).execute(RSS_PAGE_URL + pageToLoad, NoticiaRSS.RSS_MUY_INTERESANTE);
+                }
             }
-        });
+        }, false).execute(RSS_PAGE_URL + pageToLoad, NoticiaRSS.RSS_MUY_INTERESANTE);
     }
 
     private void usarNoticiasOffline() {

@@ -7,6 +7,7 @@
  */
 package com.example.muyinteresante.util;
 
+import android.annotation.SuppressLint;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -60,6 +61,7 @@ import javax.net.ssl.SSLSocket;
 import javax.net.ssl.SSLSocketFactory;
 
 @SuppressWarnings("deprecation")
+@SuppressLint("NewApi")
 public final class ConnectivityAndInternetAccess {
 
     public interface DnsProbeStrategy {

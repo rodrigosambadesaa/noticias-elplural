@@ -62,7 +62,7 @@ public class AsignaImagenDeURL extends AsyncTask<String,Void,Void> {
 					if (mapaDeBits != null) return null;
 				}
 
-				if (contexto != null && !ConnectivityAndInternetAccess.isConnectedOrConnecting(contexto)) {
+				if (contexto != null && !ConnectivityAndInternetAccess.isConnected(contexto)) {
 					return null;
 				}
 

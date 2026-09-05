@@ -1,6 +1,8 @@
 package com.example.muyinteresanteNoTocar;
 
 import java.io.InputStream;
+import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
@@ -21,10 +23,44 @@ import com.example.muyinteresante.util.ConnectivityAndInternetAccess;
 
 public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<NoticiaRSS>>{
 
+	public interface RemoteResultListener {
+		void onRemoteResult(RemoteResult result);
+	}
+
+	public static final class RemoteResult {
+		private final ArrayList<NoticiaRSS> noticias;
+		private final Integer httpStatus;
+		private final Throwable failure;
+
+		private RemoteResult(
+				ArrayList<NoticiaRSS> noticias,
+				Integer httpStatus,
+				Throwable failure) {
+			this.noticias = noticias;
+			this.httpStatus = httpStatus;
+			this.failure = failure;
+		}
+
+		public ArrayList<NoticiaRSS> getNoticias() {
+			return noticias;
+		}
+
+		public Integer getHttpStatus() {
+			return httpStatus;
+		}
+
+		public Throwable getFailure() {
+			return failure;
+		}
+	}
+
 	private Context contexto=null;
 	private iNoticiaRSS objetoReceptor=null;
 	private ProgressDialog pd=null;
 	private boolean mostrarProgreso=true;
+	private RemoteResultListener remoteResultListener;
+	private Integer httpStatus;
+	private Throwable failure;
 	
 	private static final String MENSAJE_PD="Descargando noticias...";
 	
@@ -40,6 +76,15 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 	public DescargaNoticiasRSS(Context contexto, iNoticiaRSS objetoReceptor, boolean mostrarProgreso){
 		this.contexto = contexto;
 		this.objetoReceptor = objetoReceptor;
+		this.mostrarProgreso = mostrarProgreso;
+	}
+
+	public DescargaNoticiasRSS(
+			Context contexto,
+			RemoteResultListener remoteResultListener,
+			boolean mostrarProgreso) {
+		this.contexto = contexto;
+		this.remoteResultListener = remoteResultListener;
 		this.mostrarProgreso = mostrarProgreso;
 	}
 
@@ -87,11 +132,6 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 		InputStream entrada = null;
 		
 		try{
-			if (contexto != null && !ConnectivityAndInternetAccess.isConnectedOrConnecting(contexto)) {
-				Log.w("DescargaNoticiasRSS", "Descarga cancelada: Dispositivo sin conexión según ConnectivityAndInternetAccess.");
-				return null;
-			}
-
 			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
 			dbf.setIgnoringComments(true);
 			dbf.setCoalescing(true);
@@ -105,8 +145,18 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 			conex.setUseCaches(false); // Evitamos la cache de datos.
 			conex.setRequestProperty("accept", "application/rss+xml, application/xml, text/xml, */*");
 			conex.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) noticias-elplural/1.0");
+
+			if (conex instanceof HttpURLConnection) {
+				HttpURLConnection http = (HttpURLConnection) conex;
+				http.setInstanceFollowRedirects(true);
+				httpStatus = http.getResponseCode();
+				if (httpStatus < 200 || httpStatus >= 300) {
+					Log.w("DescargaNoticiasRSS", "RSS respondió HTTP " + httpStatus + " para " + params[0]);
+					return null;
+				}
+			}
 			 
-			 // Abrimos el fichero para su lectura/descarga
+			// Abrimos el fichero para su lectura/descarga
 			entrada = conex.getInputStream();	
 
 			Document arbolXML =db.parse(entrada);
@@ -130,8 +180,14 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 			
 			return noticias;
 		}
+		catch (IOException e){
+			failure = e;
+			Log.w("DescargaNoticiasRSS", "Fallo de red descargando RSS: " + params[0], e);
+			return null;
+		}
 		catch (Exception e){
-			e.printStackTrace();
+			failure = e;
+			Log.e("DescargaNoticiasRSS", "Error procesando RSS: " + params[0], e);
 			return null;
 		}
 		finally {
@@ -154,6 +210,10 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 		
 		if (pd!=null) pd.dismiss();
 		if (objetoReceptor!=null ) objetoReceptor.onRecibeNoticiasRSS(result);
+		if (remoteResultListener != null) {
+			remoteResultListener.onRemoteResult(
+					new RemoteResult(result, httpStatus, failure));
+		}
 	}
 
 
