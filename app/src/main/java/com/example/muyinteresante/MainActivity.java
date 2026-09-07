@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         final Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayShowTitleEnabled(true);
+            getSupportActionBar().setDisplayShowTitleEnabled(false);
         }
 
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);

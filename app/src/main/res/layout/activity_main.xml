@@ -24,9 +24,25 @@
             android:layout_width="match_parent"
             android:layout_height="64dp"
             android:background="@color/colorPrimary"
-            android:title="Noticias ElPlural"
-            android:titleTextColor="#FFFFFF"
             app:popupTheme="@style/Theme.AppCompat.Light">
+
+            <TextView
+                android:id="@+id/tvAppTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:gravity="center_vertical"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:paddingLeft="16dp"
+                android:paddingRight="8dp"
+                android:shadowColor="#80000000"
+                android:shadowDx="0"
+                android:shadowDy="1"
+                android:shadowRadius="2"
+                android:text="Noticias ElPlural"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold" />
         </android.support.v7.widget.Toolbar>
 
         <!-- The extra blue row gives the upper controls room to breathe. -->
