@@ -9,57 +9,63 @@
     android:background="@color/bg_app"
     tools:context=".MainActivity">
 
-    <!-- Top app bar: title and actions stay separate from network status. -->
-    <android.support.v7.widget.Toolbar
-        android:id="@+id/toolbar"
-        android:layout_width="match_parent"
-        android:layout_height="?attr/actionBarSize"
-        android:background="@color/colorPrimary"
-        android:elevation="4dp"
-        android:title="Noticias ElPlural"
-        android:titleTextColor="#FFFFFF"
-        app:popupTheme="@style/Theme.AppCompat.Light">
-    </android.support.v7.widget.Toolbar>
-
-    <!-- Network status is a dedicated row, so it never competes with toolbar actions. -->
+    <!-- Tall blue header: toolbar and network status share one visual surface. -->
     <LinearLayout
+        android:id="@+id/topHeader"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/bg_app"
-        android:gravity="end|center_vertical"
-        android:paddingLeft="16dp"
-        android:paddingTop="6dp"
-        android:paddingRight="16dp"
-        android:paddingBottom="6dp">
+        android:background="@color/colorPrimary"
+        android:elevation="4dp"
+        android:orientation="vertical">
 
+        <!-- Title and actions have their own row and never share space with status. -->
+        <android.support.v7.widget.Toolbar
+            android:id="@+id/toolbar"
+            android:layout_width="match_parent"
+            android:layout_height="64dp"
+            android:background="@color/colorPrimary"
+            android:title="Noticias ElPlural"
+            android:titleTextColor="#FFFFFF"
+            app:popupTheme="@style/Theme.AppCompat.Light">
+        </android.support.v7.widget.Toolbar>
+
+        <!-- The extra blue row gives the upper controls room to breathe. -->
         <LinearLayout
-            android:id="@+id/layoutNetworkStatusPill"
-            android:layout_width="wrap_content"
-            android:layout_height="32dp"
-            android:background="@drawable/bg_status_badge"
-            android:clickable="true"
-            android:focusable="true"
-            android:gravity="center_vertical"
-            android:minWidth="92dp"
-            android:orientation="horizontal"
-            android:paddingLeft="10dp"
-            android:paddingRight="10dp">
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:gravity="center_vertical|end"
+            android:paddingLeft="16dp"
+            android:paddingRight="16dp">
 
-            <View
-                android:id="@+id/viewNetworkDot"
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:layout_marginRight="6dp"
-                android:background="@color/status_online" />
-
-            <TextView
-                android:id="@+id/tvNetworkStatusText"
+            <LinearLayout
+                android:id="@+id/layoutNetworkStatusPill"
                 android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Online"
-                android:textColor="@color/status_online"
-                android:textSize="12sp"
-                android:textStyle="bold" />
+                android:layout_height="32dp"
+                android:background="@drawable/bg_status_badge"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center_vertical"
+                android:minWidth="92dp"
+                android:orientation="horizontal"
+                android:paddingLeft="10dp"
+                android:paddingRight="10dp">
+
+                <View
+                    android:id="@+id/viewNetworkDot"
+                    android:layout_width="8dp"
+                    android:layout_height="8dp"
+                    android:layout_marginRight="6dp"
+                    android:background="@color/status_online" />
+
+                <TextView
+                    android:id="@+id/tvNetworkStatusText"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Online"
+                    android:textColor="@color/status_online"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
         </LinearLayout>
     </LinearLayout>
 

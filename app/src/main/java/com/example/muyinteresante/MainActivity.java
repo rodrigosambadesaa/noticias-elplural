@@ -92,9 +92,9 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         btnReintentar = findViewById(R.id.btnReintentar);
 
         // Soporte para márgenes de ventana/cámara en smartphones tipo S25 Ultra
-        final View rootView = findViewById(R.id.mainRoot);
-        if (rootView != null) {
-            ViewCompat.setOnApplyWindowInsetsListener(rootView, new OnApplyWindowInsetsListener() {
+        final View topHeader = findViewById(R.id.topHeader);
+        if (topHeader != null) {
+            ViewCompat.setOnApplyWindowInsetsListener(topHeader, new OnApplyWindowInsetsListener() {
                 @Override
                 public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
                     int top = insets.getSystemWindowInsetTop();
@@ -102,8 +102,8 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
                     int left = insets.getSystemWindowInsetLeft();
                     int right = insets.getSystemWindowInsetRight();
 
-                    if (rootView != null) {
-                        rootView.setPadding(left, top, right, rootView.getPaddingBottom());
+                    if (topHeader != null) {
+                        topHeader.setPadding(left, top, right, 0);
                     }
                     if (rvNoticias != null && bottom > 0) {
                         rvNoticias.setPadding(left, rvNoticias.getPaddingTop(), right, bottom + 12);
