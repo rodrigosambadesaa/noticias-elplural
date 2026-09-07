@@ -20,6 +20,10 @@ network failures such as DNS, connect, timeout or TLS errors trigger the Gist's
 post-failure general diagnosis, which distinguishes a feed-specific outage from a
 general connectivity problem.
 
+When Android recreates the main screen after an orientation change, the app restores
+the cached news list and the RecyclerView layout state, including the current scroll
+position, without starting another RSS request.
+
 Validation:
 
     ./gradlew testDebugUnitTest lintDebug assembleDebug assembleRelease

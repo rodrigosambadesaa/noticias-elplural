@@ -2,6 +2,7 @@ package com.example.muyinteresante;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.os.Parcelable;
 import android.support.v4.view.OnApplyWindowInsetsListener;
 import android.support.v4.view.ViewCompat;
 import android.support.v4.view.WindowInsetsCompat;
@@ -37,10 +38,15 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
     private static final String RSS_PAGE_URL = "https://www.elplural.com/uploads/feeds/feed_elplural_es.xml?page=";
     private static final int LOAD_MORE_THRESHOLD = 4;
     private static final int MAX_CONSECUTIVE_DUPLICATE_PAGES = 2;
+    private static final String KEY_RECYCLER_VIEW_STATE = "recycler_view_state";
+    private static final String KEY_NEXT_ARCHIVE_PAGE = "next_archive_page";
+    private static final String KEY_HAS_MORE_NEWS = "has_more_news";
+    private static final String KEY_CONSECUTIVE_DUPLICATE_PAGES = "consecutive_duplicate_pages";
 
     private SwipeRefreshLayout swipeRefreshLayout;
     private RecyclerView rvNoticias;
     private NoticiasAdapter adapter;
+    private LinearLayoutManager layoutManager;
 
     private LinearLayout bannerNetworkNotice;
     private TextView tvBannerText;
@@ -107,7 +113,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
             });
         }
 
-        final LinearLayoutManager layoutManager = new LinearLayoutManager(this);
+        layoutManager = new LinearLayoutManager(this);
         rvNoticias.setLayoutManager(layoutManager);
         adapter = new NoticiasAdapter(this, new ArrayList<NoticiaRSS>(), new NoticiasAdapter.OnNoticiaClickListener() {
             @Override
@@ -163,8 +169,26 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         layoutNetworkStatusPill.setOnClickListener(listenerDiagnostico);
         btnDiagnosticarRed.setOnClickListener(listenerDiagnostico);
 
-        // Cargar noticias iniciales (intenta descargar o usa caché offline)
-        cargarNoticiasIniciales();
+        // En una recreación por rotación la Activity ya tiene estado y la lista
+        // visible: restauramos caché/scroll, pero no repetimos la descarga RSS.
+        if (savedInstanceState == null) {
+            cargarNoticiasIniciales();
+        } else {
+            restaurarNoticiasTrasRecreacion(savedInstanceState);
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle outState) {
+        if (rvNoticias != null && rvNoticias.getLayoutManager() != null) {
+            outState.putParcelable(
+                    KEY_RECYCLER_VIEW_STATE,
+                    rvNoticias.getLayoutManager().onSaveInstanceState());
+        }
+        outState.putInt(KEY_NEXT_ARCHIVE_PAGE, nextArchivePage);
+        outState.putBoolean(KEY_HAS_MORE_NEWS, hasMoreNews);
+        outState.putInt(KEY_CONSECUTIVE_DUPLICATE_PAGES, consecutiveDuplicatePages);
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -266,6 +290,34 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
 
         // Luego lanzar la descarga del RSS
         ejecutarDescargarNoticias();
+    }
+
+    private void restaurarNoticiasTrasRecreacion(final Bundle savedInstanceState) {
+        ArrayList<NoticiaRSS> cached = NewsCacheManager.loadNewsFromCache(this);
+        if (cached != null && !cached.isEmpty()) {
+            adapter.updateData(cached);
+            layoutEmptyState.setVisibility(View.GONE);
+            rvNoticias.setVisibility(View.VISIBLE);
+            nextArchivePage = savedInstanceState.getInt(KEY_NEXT_ARCHIVE_PAGE, 2);
+            hasMoreNews = savedInstanceState.getBoolean(KEY_HAS_MORE_NEWS, true);
+            consecutiveDuplicatePages = savedInstanceState.getInt(
+                    KEY_CONSECUTIVE_DUPLICATE_PAGES, 0);
+        } else {
+            usarNoticiasOffline();
+        }
+
+        final Parcelable recyclerViewState =
+                savedInstanceState.getParcelable(KEY_RECYCLER_VIEW_STATE);
+        if (recyclerViewState != null) {
+            rvNoticias.post(new Runnable() {
+                @Override
+                public void run() {
+                    if (layoutManager != null) {
+                        layoutManager.onRestoreInstanceState(recyclerViewState);
+                    }
+                }
+            });
+        }
     }
 
     private void ejecutarDescargarNoticias() {
