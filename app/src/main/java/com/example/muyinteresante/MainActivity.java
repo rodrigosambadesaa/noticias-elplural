@@ -75,7 +75,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         final Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         if (getSupportActionBar() != null) {
-            getSupportActionBar().setDisplayShowTitleEnabled(false);
+            getSupportActionBar().setDisplayShowTitleEnabled(true);
         }
 
         swipeRefreshLayout = findViewById(R.id.swipeRefreshLayout);
@@ -92,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         btnReintentar = findViewById(R.id.btnReintentar);
 
         // Soporte para márgenes de ventana/cámara en smartphones tipo S25 Ultra
-        final View rootView = findViewById(android.R.id.content);
+        final View rootView = findViewById(R.id.mainRoot);
         if (rootView != null) {
             ViewCompat.setOnApplyWindowInsetsListener(rootView, new OnApplyWindowInsetsListener() {
                 @Override
@@ -102,8 +102,8 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
                     int left = insets.getSystemWindowInsetLeft();
                     int right = insets.getSystemWindowInsetRight();
 
-                    if (toolbar != null && top > 0) {
-                        toolbar.setPadding(left, top, right, 0);
+                    if (rootView != null) {
+                        rootView.setPadding(left, top, right, rootView.getPaddingBottom());
                     }
                     if (rvNoticias != null && bottom > 0) {
                         rvNoticias.setPadding(left, rvNoticias.getPaddingTop(), right, bottom + 12);
