@@ -15,6 +15,8 @@ guard fails, the app skips the request and keeps the cached/offline UI.
 The guard also requires an actual usable transport (Wi-Fi, mobile, Ethernet, VPN or
 Bluetooth); a stale capability without an active transport is treated as offline and
 cannot start the RSS request or its refresh progress indicator.
+The network badge follows the passive NetworkState and changes its color to warning
+or offline instead of remaining green; offline fallback does not emit repeated toasts.
 
 When the guard passes, the real RSS or HTTP request runs directly with its own
 timeouts, redirects, HTTP status handling and exception handling. A valid HTTP

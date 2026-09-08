@@ -1,6 +1,7 @@
 package com.example.muyinteresante;
 
 import android.content.Intent;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcelable;
 import android.support.v4.view.OnApplyWindowInsetsListener;
@@ -214,25 +215,33 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
     }
 
     private void actualizarInterfazEstadoRed(ConnectivityAndInternetAccess.NetworkState state) {
-        // Comprobaciones avanzadas de red usando los métodos relevantes de ConnectivityAndInternetAccess
-        boolean isConnectedOrConnecting = ConnectivityAndInternetAccess.isConnectedOrConnecting(this);
-        boolean isConnected = ConnectivityAndInternetAccess.isConnected(this);
+        // NetworkState is the passive source of truth for the indicator. Do not use
+        // isConnectedOrConnecting here: a stale connection attempt must not paint
+        // the app green when there is no usable network.
+        boolean isConnected = state != null
+                ? state.isConnected()
+                : ConnectivityAndInternetAccess.isConnected(this);
         boolean isWifi = ConnectivityAndInternetAccess.isConnectedWifi(this);
         boolean isMobile = ConnectivityAndInternetAccess.isConnectedMobile(this);
         boolean isVpn = ConnectivityAndInternetAccess.vpnActive(this);
         boolean isAirplane = ConnectivityAndInternetAccess.isAirplaneModeOn(this);
         boolean isFast = ConnectivityAndInternetAccess.isConnectedFast(this);
-        boolean isCaptive = ConnectivityAndInternetAccess.isCaptivePortalDetected(this);
-        boolean isValidated = ConnectivityAndInternetAccess.isInternetValidated(this);
+        boolean isCaptive = state != null
+                ? state.isCaptivePortalDetected()
+                : ConnectivityAndInternetAccess.isCaptivePortalDetected(this);
+        boolean isValidated = state != null
+                ? state.isInternetValidated()
+                : ConnectivityAndInternetAccess.isInternetValidated(this);
         boolean isStalled = ConnectivityAndInternetAccess.isConnectionAttemptStalled(this);
 
-        Log.d(TAG, "Chequeo de red: ConnectedOrConnecting=" + isConnectedOrConnecting +
+        Log.d(TAG, "Chequeo de red: State=" + state +
                 ", Connected=" + isConnected + ", Wifi=" + isWifi + ", Mobile=" + isMobile +
                 ", VPN=" + isVpn + ", Airplane=" + isAirplane + ", Fast=" + isFast +
                 ", Stalled=" + isStalled);
 
-        if (!isConnectedOrConnecting && !isConnected) {
+        if (!isConnected) {
             // Disconnected / Offline
+            layoutNetworkStatusPill.setBackgroundResource(R.drawable.bg_status_offline_badge);
             viewNetworkDot.setBackgroundResource(R.color.status_offline);
             tvNetworkStatusText.setText(isAirplane ? "Modo Avión" : "Sin red");
             tvNetworkStatusText.setTextColor(getResources().getColor(R.color.status_offline));
@@ -244,6 +253,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
                     "Dispositivo sin conexión a internet. Mostrando noticias guardadas en caché.");
         } else if (isCaptive) {
             // Captive Portal
+            layoutNetworkStatusPill.setBackgroundResource(R.drawable.bg_status_warning_badge);
             viewNetworkDot.setBackgroundResource(R.color.status_warning);
             tvNetworkStatusText.setText("Portal Cautivo");
             tvNetworkStatusText.setTextColor(getResources().getColor(R.color.status_warning));
@@ -251,8 +261,9 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
             bannerNetworkNotice.setVisibility(View.VISIBLE);
             bannerNetworkNotice.setBackgroundResource(R.color.status_warning_bg);
             tvBannerText.setText("Se requiere inicio de sesión en red (Portal Cautivo detectado).");
-        } else if (!isValidated && !isConnected) {
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isValidated) {
             // Connected without validated internet
+            layoutNetworkStatusPill.setBackgroundResource(R.drawable.bg_status_warning_badge);
             viewNetworkDot.setBackgroundResource(R.color.status_warning);
             tvNetworkStatusText.setText("Conectando...");
             tvNetworkStatusText.setTextColor(getResources().getColor(R.color.status_warning));
@@ -262,6 +273,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
             tvBannerText.setText("Conectado a la interfaz de red pero sin acceso verificado a internet.");
         } else {
             // Fully connected & validated
+            layoutNetworkStatusPill.setBackgroundResource(R.drawable.bg_status_badge);
             viewNetworkDot.setBackgroundResource(R.color.status_online);
 
             String statusType = "Online";
@@ -489,12 +501,12 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
     }
 
     private void usarNoticiasOffline() {
+        swipeRefreshLayout.setRefreshing(false);
         ArrayList<NoticiaRSS> cached = NewsCacheManager.loadNewsFromCache(this);
         if (cached != null && !cached.isEmpty()) {
             adapter.updateData(cached);
             layoutEmptyState.setVisibility(View.GONE);
             rvNoticias.setVisibility(View.VISIBLE);
-            Toast.makeText(this, "Mostrando noticias guardadas en modo offline", Toast.LENGTH_SHORT).show();
         } else {
             rvNoticias.setVisibility(View.GONE);
             layoutEmptyState.setVisibility(View.VISIBLE);
