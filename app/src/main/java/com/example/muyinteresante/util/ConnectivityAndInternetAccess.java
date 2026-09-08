@@ -818,35 +818,23 @@ public final class ConnectivityAndInternetAccess {
         return connected;
     }
 
-    /**
-     * Returns whether the current default network is suitable for normal Internet
-     * operations. On API 23+ this includes Android's validated-Internet signal;
-     * unlike {@link #isConnected(Context)}, it rejects a local network with no
-     * demonstrated Internet access.
-     */
-    public static boolean isInternetUsable(Context context) {
+    /** Returns true only when a usable Wi-Fi, cellular, or Ethernet transport exists. */
+    public static boolean hasPhysicalNetwork(Context context) {
         requireContext(context);
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) {
-            return isConnected(context);
-        }
-
         ConnectivityManager connectivityManager = manager(context);
-        Network active = connectivityManager.getActiveNetwork();
-        if (active == null) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            for (Network network : connectivityManager.getAllNetworks()) {
+                NetworkCapabilities capabilities = connectivityManager.getNetworkCapabilities(network);
+                if (isUsable(capabilities)
+                        && (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                        || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))) {
+                    return true;
+                }
+            }
             return false;
         }
-
-        NetworkCapabilities capabilities =
-                connectivityManager.getNetworkCapabilities(active);
-        if (!isUsable(capabilities)) {
-            return false;
-        }
-
-        // VPN clients such as AdGuard expose INTERNET and VPN transport but can
-        // omit VALIDATED on the VPN itself. The real RSS request remains the
-        // authoritative check for this special case.
-        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN);
+        return isConnectedLegacy(connectivityManager.getActiveNetworkInfo());
     }
 
     /** Returns a cheap point-in-time snapshot of the application's default network. */

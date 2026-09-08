@@ -18,6 +18,12 @@ public class RemoteOperationPolicyTest {
     }
 
     @Test
+    public void danglingVpnGuardSkipsRequestWithoutPhysicalTransport() {
+        assertFalse(RemoteOperationPolicy.canStartRequest(true, false));
+        assertTrue(RemoteOperationPolicy.canStartRequest(true, true));
+    }
+
+    @Test
     public void successfulHttpResponseDoesNotNeedDiagnosis() {
         assertEquals(
                 RemoteOperationPolicy.FailureDisposition.SERVICE_UNAVAILABLE,

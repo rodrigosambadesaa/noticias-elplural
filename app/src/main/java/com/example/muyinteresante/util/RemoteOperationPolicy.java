@@ -23,6 +23,14 @@ public final class RemoteOperationPolicy {
         return connected;
     }
 
+    /**
+     * Cheap guard for remote work: a dangling VPN capability is not enough;
+     * an actual physical transport must also be present.
+     */
+    public static boolean canStartRequest(boolean connected, boolean hasPhysicalNetwork) {
+        return connected && hasPhysicalNetwork;
+    }
+
     public static FailureDisposition classifyFailure(
             Integer httpStatus,
             Throwable failure,

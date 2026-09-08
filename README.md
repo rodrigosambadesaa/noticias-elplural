@@ -10,16 +10,16 @@ This is not an official ElPlural application.
 ## Remote request policy
 
 Every RSS load, refresh, retry, pagination request and remote image load first checks
-the current usable network with ConnectivityAndInternetAccess.isConnected(). If the
-guard fails, the app skips the request and keeps the cached/offline UI.
-The guard also requires an actual usable transport (Wi-Fi, mobile, Ethernet, VPN or
-Bluetooth); a stale capability without an active transport is treated as offline and
-cannot start the RSS request or its refresh progress indicator.
+the cheap combination of ConnectivityAndInternetAccess.isConnected() and
+hasPhysicalNetwork(). If the guard fails, the app skips the request and keeps the
+cached/offline UI. A VPN-only or dangling virtual capability is therefore treated as
+offline; a usable Wi-Fi, mobile-data or Ethernet transport must exist before a
+remote operation or its refresh progress indicator can start.
 The network badge follows the passive NetworkState and changes its color to warning
 or offline instead of remaining green; offline fallback does not emit repeated toasts.
-Active VPN transports such as AdGuard are allowed when they advertise Internet
-capability even if Android does not expose VALIDATED on the VPN itself; the real feed
-request and its normal error handling remain authoritative in that case.
+VPN state remains visible in diagnostics, but VPN alone never makes the app appear
+connected. When a physical transport exists, the real feed request remains the
+authoritative test even if Android does not expose VALIDATED on the VPN itself.
 
 When the guard passes, the real RSS or HTTP request runs directly with its own
 timeouts, redirects, HTTP status handling and exception handling. A valid HTTP
