@@ -17,6 +17,9 @@ Bluetooth); a stale capability without an active transport is treated as offline
 cannot start the RSS request or its refresh progress indicator.
 The network badge follows the passive NetworkState and changes its color to warning
 or offline instead of remaining green; offline fallback does not emit repeated toasts.
+Active VPN transports such as AdGuard are allowed when they advertise Internet
+capability even if Android does not expose VALIDATED on the VPN itself; the real feed
+request and its normal error handling remain authoritative in that case.
 
 When the guard passes, the real RSS or HTTP request runs directly with its own
 timeouts, redirects, HTTP status handling and exception handling. A valid HTTP
