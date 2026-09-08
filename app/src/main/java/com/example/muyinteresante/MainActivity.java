@@ -324,6 +324,9 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         // Guard barato: la petición RSS real es la prueba definitiva del feed.
         if (!RemoteOperationPolicy.canStartRequest(
                 ConnectivityAndInternetAccess.isConnected(this))) {
+            // A refresh gesture or a previous callback may have left the spinner
+            // active; offline must always settle it before showing cached content.
+            swipeRefreshLayout.setRefreshing(false);
             Log.d(TAG, "Carga RSS omitida: no hay una red utilizable.");
             usarNoticiasOffline();
             return;
@@ -428,6 +431,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
 
         if (!RemoteOperationPolicy.canStartRequest(
                 ConnectivityAndInternetAccess.isConnected(this))) {
+            swipeRefreshLayout.setRefreshing(false);
             Log.d(TAG, "No se cargan más noticias: sin conexión disponible.");
             Toast.makeText(this, "Sin conexión: se mantienen las noticias guardadas.", Toast.LENGTH_SHORT).show();
             return;

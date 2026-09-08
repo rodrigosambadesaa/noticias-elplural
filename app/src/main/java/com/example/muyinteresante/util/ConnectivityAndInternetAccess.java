@@ -1971,9 +1971,25 @@ public final class ConnectivityAndInternetAccess {
             return false;
         }
 
+        // NET_CAPABILITY_INTERNET can remain present on a stale/default network
+        // even when no physical or virtual transport is currently available.
+        // Do not classify that state as connected: callers use this method as the
+        // cheap guard before starting real RSS/HTTP requests.
+        if (!hasUsableTransport(capabilities)) {
+            return false;
+        }
+
         return Build.VERSION.SDK_INT < Build.VERSION_CODES.P
                 || capabilities.hasCapability(
                         NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED);
+    }
+
+    private static boolean hasUsableTransport(NetworkCapabilities capabilities) {
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
+                || capabilities.hasTransport(NetworkCapabilities.TRANSPORT_BLUETOOTH);
     }
 
     private static boolean hasTransport(Context context, int transport) {
