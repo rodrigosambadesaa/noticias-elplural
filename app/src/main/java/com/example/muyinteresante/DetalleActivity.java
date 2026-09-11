@@ -1,5 +1,6 @@
 package com.example.muyinteresante;
 
+import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
@@ -21,6 +22,9 @@ import android.webkit.WebViewClient;
 import android.widget.ProgressBar;
 import android.widget.Toast;
 
+import com.example.muyinteresante.util.ConnectivityAndInternetAccess;
+
+@SuppressLint("NewApi")
 public class DetalleActivity extends AppCompatActivity {
 
     public static final String EXTRA_URL = "extra_url";
@@ -30,6 +34,8 @@ public class DetalleActivity extends AppCompatActivity {
     private ProgressBar progressBar;
     private String articleUrl;
     private String articleTitle;
+    private boolean pageLoadFailureReported;
+    private ConnectivityAndInternetAccess.Request diagnosticRequest;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -92,6 +98,7 @@ public class DetalleActivity extends AppCompatActivity {
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                pageLoadFailureReported = false;
                 progressBar.setVisibility(View.VISIBLE);
             }
 
@@ -103,11 +110,27 @@ public class DetalleActivity extends AppCompatActivity {
             @Override
             public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
                 super.onReceivedError(view, request, error);
+                if (request != null && request.isForMainFrame()) {
+                    mostrarFalloCargaArticulo();
+                }
+            }
+
+            @Override
+            public void onReceivedHttpError(
+                    WebView view,
+                    WebResourceRequest request,
+                    android.webkit.WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(view, request, errorResponse);
+                if (request != null && request.isForMainFrame()
+                        && errorResponse != null
+                        && errorResponse.getStatusCode() >= 400) {
+                    mostrarFalloCargaArticulo();
+                }
             }
         });
 
         if (articleUrl != null && !articleUrl.isEmpty()) {
-            webView.loadUrl(articleUrl);
+            cargarArticuloSiHayRed();
         } else {
             Toast.makeText(this, "URL no válida", Toast.LENGTH_SHORT).show();
             finish();
@@ -129,7 +152,7 @@ public class DetalleActivity extends AppCompatActivity {
             return true;
         } else if (id == R.id.menu_actualizar) {
             if (webView != null) {
-                webView.reload();
+                cargarArticuloSiHayRed();
             }
             return true;
         } else if (id == R.id.action_abrir_navegador || id == R.id.action_test_conectividad) {
@@ -145,6 +168,58 @@ public class DetalleActivity extends AppCompatActivity {
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private void cargarArticuloSiHayRed() {
+        if (!ConnectivityAndInternetAccess.isConnected(this)
+                || !ConnectivityAndInternetAccess.hasPhysicalNetwork(this)) {
+            Toast.makeText(this, R.string.network_offline, Toast.LENGTH_SHORT).show();
+            return;
+        }
+        pageLoadFailureReported = false;
+        webView.loadUrl(articleUrl);
+    }
+
+    private void mostrarFalloCargaArticulo() {
+        if (pageLoadFailureReported) {
+            return;
+        }
+        pageLoadFailureReported = true;
+        if (diagnosticRequest != null) {
+            diagnosticRequest.cancel();
+        }
+        diagnosticRequest = ConnectivityAndInternetAccess.checkInternetAsyncDefault(
+                this,
+                new ConnectivityAndInternetAccess.InternetCallback() {
+                    @Override
+                    public void onResult(ConnectivityAndInternetAccess.InternetResult result) {
+                        diagnosticRequest = null;
+                        if (isFinishing()) {
+                            return;
+                        }
+                        Toast.makeText(
+                                DetalleActivity.this,
+                                result != null && result.isReachable()
+                                        ? R.string.backend_unavailable
+                                        : R.string.internet_unavailable,
+                                Toast.LENGTH_LONG).show();
+                    }
+                });
+    }
+
+    @Override
+    protected void onDestroy() {
+        if (diagnosticRequest != null) {
+            diagnosticRequest.cancel();
+            diagnosticRequest = null;
+        }
+        if (webView != null) {
+            webView.stopLoading();
+            webView.setWebViewClient(null);
+            webView.destroy();
+            webView = null;
+        }
+        super.onDestroy();
     }
 
     @Override

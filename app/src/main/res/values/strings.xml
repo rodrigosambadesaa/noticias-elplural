@@ -3,5 +3,8 @@
 
     <string name="app_name">Noticias ElPlural</string>
     <string name="actualizar">Actualizar</string>
+    <string name="network_offline">Sin conexión de red.</string>
+    <string name="internet_unavailable">No se puede acceder a Internet.</string>
+    <string name="backend_unavailable">Hay conexión a Internet, pero el servicio no está disponible.</string>
 
 </resources>
