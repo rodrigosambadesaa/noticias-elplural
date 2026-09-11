@@ -61,6 +61,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 	private RemoteResultListener remoteResultListener;
 	private Integer httpStatus;
 	private Throwable failure;
+	private volatile URLConnection activeConnection;
 	
 	private static final String MENSAJE_PD="Descargando noticias...";
 	
@@ -123,6 +124,11 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 		ConnectivityAndInternetAccess.endConnectionAttempt();
 		
 		if (pd!=null) pd.dismiss();
+		URLConnection connection = activeConnection;
+		activeConnection = null;
+		if (connection instanceof HttpURLConnection) {
+			((HttpURLConnection) connection).disconnect();
+		}
 	}
 	
 	 
@@ -137,11 +143,13 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 			dbf.setCoalescing(true);
 			DocumentBuilder db = dbf.newDocumentBuilder(); 
 			
-			 // Creamos objeto URL a partir de la direccion web para conectarnos con el servidor
+			// Creamos objeto URL a partir de la direccion web para conectarnos con el servidor
 			URL url = new URL(params[0]);
 			URLConnection conex = url.openConnection(); // Abrimos la conexion
-			conex.setConnectTimeout(10000);
-			conex.setReadTimeout(10000);
+			// No imponemos un limite artificial: en datos moviles lentos el feed
+			// puede tardar mas de diez segundos en conectar o entregar contenido.
+			// La cancelacion manual del ProgressDialog sigue estando disponible.
+			activeConnection = conex;
 			conex.setUseCaches(false); // Evitamos la cache de datos.
 			conex.setRequestProperty("accept", "application/rss+xml, application/xml, text/xml, */*");
 			conex.setRequestProperty("User-Agent", "Mozilla/5.0 (Android) noticias-elplural/1.0");
@@ -196,6 +204,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 					entrada.close();
 				} catch (Exception ignored) { }
 			}
+			activeConnection = null;
 		}
 
 	}

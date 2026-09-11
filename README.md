@@ -21,8 +21,11 @@ VPN state remains visible in diagnostics, but VPN alone never makes the app appe
 connected. When a physical transport exists, the real feed request remains the
 authoritative test even if Android does not expose VALIDATED on the VPN itself.
 
-When the guard passes, the real RSS or HTTP request runs directly with its own
-timeouts, redirects, HTTP status handling and exception handling. A valid HTTP
+When the guard passes, the real RSS or HTTP request runs directly. RSS loading
+does not impose an artificial connect/read deadline, so slow mobile connections
+can finish normally; the user can still cancel the progress dialog. Image and
+diagnostic probes retain bounded timeouts. All requests keep redirects, HTTP status
+handling and exception handling. A valid HTTP
 response is never followed by a redundant general connectivity probe. Only ambiguous
 network failures such as DNS, connect, timeout or TLS errors trigger the Gist's
 post-failure general diagnosis, which distinguishes a feed-specific outage from a
