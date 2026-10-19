@@ -19,7 +19,7 @@
         android:orientation="vertical">
 
         <!-- Title and actions have their own row and never share space with status. -->
-        <android.support.v7.widget.Toolbar
+        <androidx.appcompat.widget.Toolbar
             android:id="@+id/toolbar"
             android:layout_width="match_parent"
             android:layout_height="64dp"
@@ -43,7 +43,7 @@
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold" />
-        </android.support.v7.widget.Toolbar>
+        </androidx.appcompat.widget.Toolbar>
 
         <!-- The extra blue row gives the upper controls room to breathe. -->
         <LinearLayout
@@ -126,7 +126,7 @@
     </LinearLayout>
 
     <!-- Main Content Area with SwipeRefreshLayout -->
-    <android.support.v4.widget.SwipeRefreshLayout
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipeRefreshLayout"
         android:layout_width="match_parent"
         android:layout_height="0dp"
@@ -136,7 +136,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent">
 
-            <android.support.v7.widget.RecyclerView
+            <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/rvNoticias"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
@@ -194,6 +194,6 @@
 
         </FrameLayout>
 
-    </android.support.v4.widget.SwipeRefreshLayout>
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </LinearLayout>
