@@ -6,16 +6,12 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.net.URLConnection;
 import java.util.ArrayList;
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NodeList;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.AsyncTask;
 import android.util.Log;
+import com.example.muyinteresante.R;
 
 import com.example.muyinteresante.util.ConnectivityAndInternetAccess;
 
@@ -63,7 +59,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 	private Throwable failure;
 	private volatile URLConnection activeConnection;
 	
-	private static final String MENSAJE_PD="Descargando noticias...";
+	
 	
 	
 	public DescargaNoticiasRSS(Context contexto, iNoticiaRSS objetoReceptor){
@@ -101,7 +97,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 		
 		if (mostrarProgreso && contexto != null) {
 			pd = new ProgressDialog(contexto);
-			pd.setMessage(MENSAJE_PD);
+			pd.setMessage(contexto.getString(R.string.downloading_news));
 			pd.setCancelable(true);
 			pd.setOnCancelListener(new DialogInterface.OnCancelListener() {
 				
@@ -138,17 +134,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 		InputStream entrada = null;
 		
 		try{
-			DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-			dbf.setIgnoringComments(true);
-			dbf.setCoalescing(true);
-			try {
-			    dbf.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-			    dbf.setFeature("http://xml.org/sax/features/external-general-entities", false);
-			    dbf.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-			} catch (Exception e) {
-			    android.util.Log.w("XML_SEC", "El parser no soporta las configuraciones de seguridad XXE", e);
-			}
-			DocumentBuilder db = dbf.newDocumentBuilder(); 
+			 
 			
 			// Creamos objeto URL a partir de la direccion web para conectarnos con el servidor
 			URL url = new URL(params[0]);
@@ -175,26 +161,19 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 			// Abrimos el fichero para su lectura/descarga
 			entrada = conex.getInputStream();	
 
-			Document arbolXML =db.parse(entrada);
-			entrada.close();
-			Element raiz = arbolXML.getDocumentElement(); 
-			raiz.normalize(); 
-			
-			ArrayList<NoticiaRSS> noticias = new ArrayList<NoticiaRSS>();
-			
-			NodeList listaItems = raiz.getElementsByTagName("item");
-			
-			for (int i=0;i<listaItems.getLength();i++){
-				try {
-					Element item = (Element)listaItems.item(i);
-					noticias.add(new NoticiaRSS(item, params[1]));
-					
-					publishProgress(noticias.size());
-				}
-				catch(Exception e){ android.util.Log.e("SecurityLog", "Excepción capturada de forma segura", e);}
-			}
-			
-			return noticias;
+			final ArrayList<NoticiaRSS> noticias = new ArrayList<>();
+            RssPullParser.parse(entrada, item -> {
+                if (isCancelled()) return;
+                try {
+                    noticias.add(NoticiaRSS.fromRssFields(item.title, item.description,
+                            item.link, item.pubDate, item.image));
+                    publishProgress(noticias.size());
+                } catch (Exception exception) {
+                    Log.w("DescargaNoticiasRSS", "Noticia RSS inválida", exception);
+                }
+            });
+            if (isCancelled()) return null;
+            return noticias;
 		}
 		catch (IOException e){
 			failure = e;
@@ -238,7 +217,7 @@ public class DescargaNoticiasRSS extends AsyncTask<String,Integer,ArrayList<Noti
 	protected void onProgressUpdate(Integer... values) {
 		super.onProgressUpdate(values);
 		if (pd != null && values != null && values.length > 0) {
-			pd.setMessage(MENSAJE_PD + " " + values[0]);
+			pd.setMessage(contexto.getString(R.string.downloading_news_count, values[0]));
 		}
 	}
 }
