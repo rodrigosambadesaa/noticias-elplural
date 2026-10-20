@@ -417,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements iNoticiaRSS {
         }
 
         Log.w(TAG, "Fallo ambiguo de " + operation + "; ejecutando diagnóstico general posterior.", failure);
-        ConnectivityAndInternetAccess.checkInternetAsyncDefault(
+        ConnectivityAndInternetAccess.checkHttpOnlyAsyncDefault(
                 this,
                 new ConnectivityAndInternetAccess.InternetCallback() {
                     @Override
