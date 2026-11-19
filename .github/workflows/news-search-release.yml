@@ -43,6 +43,11 @@ jobs:
           - Conserva optimizaciones previas de Glide y limpieza de WebView.
           - APK firmado con la configuración de depuración del proyecto; no es una firma de producción estable.
           EOF
+          release_tag="v2.2.5"
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "::notice::Release $release_tag already exists; preserving its tag and assets."
+            exit 0
+          fi
           gh release create v2.2.5 app/build/outputs/apk/release/app-release.apk \
             --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
             --title "v2.2.5 — Buscador AndroidX reparado" --notes-file release-notes.md
